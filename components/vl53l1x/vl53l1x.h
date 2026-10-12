@@ -51,6 +51,19 @@ class VL53L1X : public i2c::I2CDevice, public Component {
   VL53L1_Error init();
   VL53L1_Error wait_for_boot();
   VL53L1_Error get_device_state(uint8_t *device_state);
+
+public:
+  void set_xshut(bool onoff) {
+    if (this->xshut_pin.has_value()) {
+      if (onoff) {
+        this->xshut_pin.value()->pin_mode(gpio::FLAG_OUTPUT);
+        this->xshut_pin.value()->digital_write(0);
+      }
+      else {
+        this->xshut_pin.value()->pin_mode(gpio::FLAG_INPUT);
+      }
+    }
+  }
 };
 
 }  // namespace vl53l1x

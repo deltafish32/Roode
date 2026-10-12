@@ -1,4 +1,5 @@
 #include "vl53l1x.h"
+#include "VL53L1X_i2ccoms.h"
 
 namespace esphome {
 namespace vl53l1x {
@@ -26,7 +27,16 @@ void VL53L1X::dump_config() {
 void VL53L1X::setup() {
   ESP_LOGD(TAG, "Beginning setup");
 
+  last_roi = nullptr;
+
+  // VL53L1X_ULD talks to the sensor through the ESPHome I2C bus instead of Arduino Wire
+  i2c_set_bus(this->bus_);
+
   // TODO use xshut_pin, if given, to change address
+
+  set_xshut(false);
+  delay_microseconds_safe(10 * 1000);
+  
   auto status = this->init();
   if (status != VL53L1_ERROR_NONE) {
     this->mark_failed();
@@ -179,13 +189,23 @@ optional<uint16_t> VL53L1X::read_distance(ROI *roi, VL53L1_Error &status) {
   }
 
   status = this->sensor.StartRanging();
+  if (status != VL53L1_ERROR_NONE) {
+    ESP_LOGE(TAG, "Failed to start ranging, error code: %d", status);
+    return {};
+  }
 
   // Wait for the measurement to be ready
   // TODO use interrupt_pin, if given, to await data ready instead of polling
   uint8_t dataReady = false;
+  uint32_t tick = millis();
   while (!dataReady) {
     status = this->sensor.CheckForDataReady(&dataReady);
     if (status != VL53L1_ERROR_NONE) {
+      ESP_LOGE(TAG, "Failed to check if data is ready, error code: %d", status);
+      return {};
+    }
+    if (millis() - tick >= this->ranging_mode->timing_budget * 2) {
+      status = VL53L1_ERROR_TIME_OUT;
       ESP_LOGE(TAG, "Failed to check if data is ready, error code: %d", status);
       return {};
     }

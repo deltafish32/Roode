@@ -133,6 +133,7 @@ class Roode : public PollingComponent {
   uint8_t samples{2};
   bool invert_direction_{false};
   int number_attempts = 20;  // TO DO: make this configurable
+  int shortest_distance_threshold = 1000;
   int short_distance_threshold = 1300;
   int medium_distance_threshold = 2000;
   int medium_long_distance_threshold = 2700;

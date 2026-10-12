@@ -195,7 +195,10 @@ const RangingMode *Roode::determine_raning_mode(uint16_t average_entry_zone_dist
                                                                           : average_exit_zone_distance;
   uint16_t max = average_entry_zone_distance > average_exit_zone_distance ? average_entry_zone_distance
                                                                           : average_exit_zone_distance;
-  if (min <= short_distance_threshold) {
+  if (min <= shortest_distance_threshold) {
+    return Ranging::Shortest;
+  }
+  if (max > shortest_distance_threshold && min <= short_distance_threshold) {
     return Ranging::Short;
   }
   if (max > short_distance_threshold && min <= medium_distance_threshold) {

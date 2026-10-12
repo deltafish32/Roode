@@ -1,5 +1,6 @@
 #pragma once
 #include <math.h>
+#include <list>
 
 #include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/sensor/sensor.h"
@@ -138,6 +139,27 @@ class Roode : public PollingComponent {
   int medium_distance_threshold = 2000;
   int medium_long_distance_threshold = 2700;
   int long_distance_threshold = 3400;
+
+
+public:
+  const RangingMode *last_ranging_mode{};
+  static std::string time_str(uint64_t time, bool show_ms = false);
+  bool get_xshut() const {
+    return this->xshut;
+  }
+  void set_xshut(bool onoff) {
+    this->xshut = onoff;
+  }
+  bool xshut{false};
+  bool xshut_mem{false};
+  bool recover_flag{false};
+  int error_count{0};
+  int error_data_max{10};
+  typedef struct _ERROR_DATA {
+    uint64_t time;
+    VL53L1_Error status;
+  } ERROR_DATA;
+  std::list<ERROR_DATA> error_datas;
 };
 
 }  // namespace roode

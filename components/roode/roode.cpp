@@ -8,6 +8,18 @@ void Roode::dump_config() {
   LOG_UPDATE_INTERVAL(this);
   entry->dump_config();
   exit->dump_config();
+
+  ESP_LOGCONFIG(TAG, "  error_count: %d", this->error_count);
+  if (this->error_count > 0) {
+    ESP_LOGCONFIG(TAG, "  error_data:");
+    for (auto it : this->error_datas) {
+      ESP_LOGCONFIG(TAG, "    - %s ago (boot after %s, %d)", 
+        time_str(millis() - it.time).c_str(), time_str(it.time, true).c_str(), it.status);
+    }
+  }
+  else {
+    ESP_LOGCONFIG(TAG, "  error_data: []");
+  }
 }
 
 void Roode::setup() {
@@ -36,8 +48,50 @@ void Roode::update() {
 }
 
 void Roode::loop() {
+  if (this->xshut_mem != this->xshut || this->recover_flag) {
+    this->xshut_mem = this->xshut;
+
+    if (this->recover_flag || this->xshut) {
+      ESP_LOGI(TAG, "VL53L1X shutdown");
+      distanceSensor->set_xshut(true);
+    }
+
+    if (this->recover_flag) {
+      delay_microseconds_safe(100 * 1000);
+    }
+
+    if (this->recover_flag || this->xshut == false) {
+      ESP_LOGI(TAG, "VL53L1X recover");
+      distanceSensor->setup();
+      // auto *mode = determine_raning_mode(entry->threshold->idle, exit->threshold->idle);
+      // distanceSensor->set_ranging_mode(mode);
+      distanceSensor->set_ranging_mode(this->last_ranging_mode);
+    }
+
+    this->recover_flag = false;
+  }
+
+  if (this->xshut) {
+    return;
+  }
+
   // unsigned long start = micros();
-  this->current_zone->readDistance(distanceSensor);
+  auto result = this->current_zone->readDistance(distanceSensor);
+  if (result != VL53L1_ERROR_NONE) {
+    this->recover_flag = true;
+    if (millis() >= 6000) { // log only within 6s after booting
+      ++this->error_count;
+      while (this->error_datas.size() >= this->error_data_max) {
+        this->error_datas.pop_front();
+      }
+      ERROR_DATA ed;
+      ed.time = esp_timer_get_time();
+      ed.status = result;
+      this->error_datas.push_back(ed);
+    }
+    return;
+  }
+
   // uint16_t samplingDistance = sampling(this->current_zone);
   path_tracking(this->current_zone);
   handle_sensor_status();
@@ -235,6 +289,7 @@ void Roode::calibrate_zones() {
 void Roode::calibrateDistance() {
   auto *const initial = distanceSensor->get_ranging_mode_override().value_or(Ranging::Longest);
   distanceSensor->set_ranging_mode(initial);
+  this->last_ranging_mode = initial;
 
   entry->calibrateThreshold(distanceSensor, number_attempts);
   exit->calibrateThreshold(distanceSensor, number_attempts);
@@ -245,6 +300,7 @@ void Roode::calibrateDistance() {
   auto *mode = determine_raning_mode(entry->threshold->idle, exit->threshold->idle);
   if (mode != initial) {
     distanceSensor->set_ranging_mode(mode);
+    this->last_ranging_mode = mode;
   }
 }
 
@@ -280,5 +336,30 @@ void Roode::publish_sensor_configuration(Zone *entry, Zone *exit, bool isMax) {
     exit_roi_width_sensor->publish_state(exit->roi->width);
   }
 }
+
+std::string Roode::time_str(uint64_t time, bool show_ms) {
+  const uint32_t buffer_size = 32;
+  char buffer[buffer_size];
+  char* ptr = buffer;
+
+  if (time >= 86400000000ULL) {
+    ptr += sprintf(ptr, "%llud ", time / 86400000000ULL);
+  }
+  if (time >= 3600000000ULL) {
+    ptr += sprintf(ptr, "%uh ", (uint32_t)(time % 86400000000ULL / 3600000000ULL));
+  }
+  if (time >= 60000000ULL) {
+    ptr += sprintf(ptr, "%um ", (uint32_t)(time % 3600000000ULL / 60000000ULL));
+  }
+  
+  ptr += sprintf(ptr, "%us%s", (uint32_t)(time % 60000000ULL / 1000000ULL), show_ms ? " " : "");
+
+  if (show_ms) {
+    sprintf(ptr, "%ums", (uint32_t)(time % 1000000ULL / 1000));
+  }
+
+  return std::string(buffer);
+}
+
 }  // namespace roode
 }  // namespace esphome

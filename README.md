@@ -1,11 +1,5 @@
 # RooDe
 
-[![GitHub release](https://img.shields.io/github/v/tag/Lyr3x/Roode?style=flat-square)](https://GitHub.com/Lyr3x/Roode/releases/)
-[![Build](https://img.shields.io/github/workflow/status/Lyr3x/Roode/CI?style=flat-square)](https://github.com/Lyr3x/Roode/blob/master/.github/workflows/ci.yml)
-[![Maintenance](https://img.shields.io/maintenance/yes/2023?style=flat-square)](https://GitHub.com/Lyr3x/Roode/graphs/commit-activity)
-
-[![Roode community](https://img.shields.io/discord/879407995837087804.svg?label=Discord&logo=Discord&colorB=7289da&style=for-the-badge)](https://discord.gg/hU9SvSXMHs)
-
 People counter working with any smart home system which supports ESPHome/MQTT like Home Assistant. All necessary entities are created automatically.
 
 - [Hardware Recommendation](#hardware-recommendation)

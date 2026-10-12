@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.0
+
+- Vendor the VL53L1X_ULD library (BSD 3-Clause, by rneurink) into the `vl53l1x` component and route its I2C traffic through the ESPHome I2C bus instead of Arduino `Wire`; the external `rneurink/VL53L1X_ULD` and `Wire` library dependencies are removed
+- Add `Shortest` ranging mode to automatic ranging mode selection for idle distances up to 1000 mm
+- Add sensor shutdown control (`set_xshut()`) on both `Roode` and `VL53L1X` to power the sensor down and back up at runtime
+- Add automatic sensor recovery: timeout while waiting for measurement data prevents a hung sensor from blocking the loop, and when a distance read fails the VL53L1X is power-cycled via `xshut_pin` (if configured), re-initialized and restored to the last used ranging mode
+- Record sensor read errors (count plus the last 10 entries with timestamps and status codes) and show them in `dump_config()`
+
 ## 1.5.4
 
 - Fix ESPHome 2026.2+ compatibility by migrating ESP8266 configurations to new platform format
